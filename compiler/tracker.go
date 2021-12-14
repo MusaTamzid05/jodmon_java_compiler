@@ -70,9 +70,9 @@ func (t *Tracker) Run() {
 		currentHashData := t.loadHash()
 
 		for path, hashData := range currentHashData {
-
 			if HashSame(lastHashedData[path], hashData) == false {
-				fmt.Println("[*] Changing found in ", path)
+				fmt.Println("[*] Changes found in ", path)
+				ExecuteJavaCompile(path)
 				lastHashedData[path] = hashData
 			}
 
