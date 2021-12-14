@@ -1,10 +1,13 @@
 package compiler
 
 import (
+	"crypto/md5"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type Tracker struct {
@@ -30,18 +33,29 @@ func (t *Tracker) initListFiles(path string) error {
 
 }
 
-func (t *Tracker) loadTime() map[string]string {
-	fileTracker := map[string]string{}
+func (t *Tracker) generateHash(path string) ([]byte, error) {
+	content, err := ioutil.ReadFile(path)
+
+	if err != nil {
+		return []byte{}, err
+	}
+
+	hashData := md5.Sum(content)
+	return hashData[:], nil
+}
+
+func (t *Tracker) loadHash() map[string][]byte {
+	fileTracker := map[string][]byte{}
 
 	for _, path := range t.paths {
-		fp, err := os.Stat(path)
+		hashData, err := t.generateHash(path)
 
 		if err != nil {
 			fmt.Println(err)
 			continue
 		}
 
-		fileTracker[path] = fp.ModTime().String()
+		fileTracker[path] = hashData
 	}
 
 	return fileTracker
@@ -49,10 +63,21 @@ func (t *Tracker) loadTime() map[string]string {
 }
 
 func (t *Tracker) Run() {
-	currentTrackedData := t.loadTime()
+	lastHashedData := t.loadHash()
 
-	for key, value := range currentTrackedData {
-		fmt.Println(key, " ", value)
+	for {
+		time.Sleep(1 * time.Second)
+		currentHashData := t.loadHash()
+
+		for path, hashData := range currentHashData {
+
+			if HashSame(lastHashedData[path], hashData) == false {
+				fmt.Println("[*] Changing found in ", path)
+				lastHashedData[path] = hashData
+			}
+
+		}
+
 	}
 
 }
