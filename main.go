@@ -14,6 +14,6 @@ func main() {
 		return
 	}
 
-	tracker.Show()
+	tracker.Run()
 
 }
