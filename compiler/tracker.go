@@ -8,6 +8,7 @@ import (
 )
 
 type Tracker struct {
+	root  string
 	paths []string
 }
 
@@ -76,6 +77,36 @@ func (t *Tracker) Run() {
 
 		}
 
+		newPaths, err := t.getNewFilePaths()
+
+		if err != nil {
+			log.Fatalln(err)
+
+		}
+
+		// handle new files
+
+		if len(newPaths) > 0 {
+			if compiled == false {
+				compiled = true
+			}
+
+			for _, path := range newPaths {
+
+				log.Println("[*] New file found in ", path)
+
+				if ExecuteJavaCompile(path) == false {
+					issueCount += 1
+				} else {
+					log.Println("[*] Adding ", path)
+					t.paths = append(t.paths, path)
+				}
+
+			}
+
+			lastHashedData = t.loadHash()
+		}
+
 		if compiled {
 			log.Println("[*] Total issue found ", issueCount)
 			issueCount = 0
@@ -83,11 +114,43 @@ func (t *Tracker) Run() {
 		}
 
 	}
+}
+
+func (t *Tracker) getNewFilePaths() ([]string, error) {
+	var err error
+	paths := []string{}
+
+	paths, err = ListFiles(t.root)
+
+	if err != nil {
+		return paths, err
+	}
+
+	newPaths := []string{}
+
+	for _, path := range paths {
+		found := false
+
+		for _, trackedPath := range t.paths {
+			if trackedPath == path {
+				found = true
+				break
+			}
+		}
+
+		if found == false {
+			newPaths = append(newPaths, path)
+		}
+
+	}
+
+	return newPaths, nil
 
 }
 
 func MakeTracker(path string) (Tracker, error) {
-	tracker := Tracker{}
+
+	tracker := Tracker{root: path}
 	err := tracker.initListFiles(path)
 
 	if err != nil {
