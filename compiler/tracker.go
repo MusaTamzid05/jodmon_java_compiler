@@ -4,13 +4,14 @@ import (
 	"crypto/md5"
 	"io/ioutil"
 	"log"
+	"os"
+	"strings"
 	"time"
 )
 
 type Tracker struct {
 	root           string
 	paths          []string
-	latestPaths    []string
 	lastHashedData map[string][]byte
 	compiled       bool
 	issueCount     int
@@ -70,7 +71,6 @@ func (t *Tracker) Run() {
 	t.lastHashedData = t.loadHash()
 	t.compiled = false
 	t.issueCount = 0
-	var err error
 
 	for {
 		time.Sleep(1 * time.Second)
@@ -95,14 +95,14 @@ func (t *Tracker) Run() {
 
 		}
 
-		t.latestPaths, err = t.getNewFilePaths()
+		latestPaths, err := ListFiles(t.root)
 
 		if err != nil {
-			log.Fatalln(err)
+			log.Panic(err)
 		}
 
-		// handle new files
-		t.handleNewFiles()
+		t.handleRemoveFiles(latestPaths)
+		t.handleNewFiles(latestPaths)
 
 		if t.compiled {
 			log.Println("[*] Total issue found ", t.issueCount)
@@ -113,14 +113,20 @@ func (t *Tracker) Run() {
 	}
 }
 
-func (t *Tracker) handleNewFiles() {
+func (t *Tracker) handleNewFiles(latestPaths []string) {
 
-	if len(t.latestPaths) > 0 {
+	newPaths, err := t.getNewFilePaths()
+
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	if len(newPaths) > 0 {
 		if t.compiled == false {
 			t.compiled = true
 		}
 
-		for _, path := range t.latestPaths {
+		for _, path := range newPaths {
 
 			log.Println("[*] New file found in ", path)
 
@@ -135,6 +141,43 @@ func (t *Tracker) handleNewFiles() {
 
 		t.lastHashedData = t.loadHash()
 	}
+
+}
+
+func (t *Tracker) handleRemoveFiles(latestPaths []string) {
+	// slow version, do reslicing to make it faster.
+
+	tempPaths := t.paths
+
+	currentExistsPaths := []string{}
+
+	for _, path := range tempPaths {
+		found := false
+		for _, latestPath := range latestPaths {
+			if path == latestPath {
+				found = true
+				break
+			}
+		}
+
+		if found {
+			currentExistsPaths = append(currentExistsPaths, path)
+		} else {
+			log.Println("[*] Deleted file : ", path)
+			classPath := strings.Replace(path, ".java", ".class", 1)
+			log.Println("[*] Removing : ", classPath)
+
+			err := os.Remove(classPath)
+
+			if err != nil {
+				log.Println("[*] ", err)
+			}
+
+		}
+	}
+
+	t.paths = currentExistsPaths
+	t.lastHashedData = t.loadHash()
 
 }
 
