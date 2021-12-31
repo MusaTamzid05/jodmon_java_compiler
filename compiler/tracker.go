@@ -4,9 +4,6 @@ import (
 	"crypto/md5"
 	"io/ioutil"
 	"log"
-	"os"
-	"path/filepath"
-	"strings"
 	"time"
 )
 
@@ -15,19 +12,8 @@ type Tracker struct {
 }
 
 func (t *Tracker) initListFiles(path string) error {
-
-	err := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
-		if strings.HasSuffix(path, ".java") {
-			if strings.HasSuffix(path, "Main.java") {
-				return nil
-			}
-
-			t.paths = append(t.paths, path)
-		}
-
-		return nil
-
-	})
+	var err error
+	t.paths, err = ListFiles(path)
 
 	return err
 
