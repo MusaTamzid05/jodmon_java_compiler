@@ -2,8 +2,8 @@ package compiler
 
 import (
 	"crypto/md5"
-	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,7 +51,7 @@ func (t *Tracker) loadHash() map[string][]byte {
 		hashData, err := t.generateHash(path)
 
 		if err != nil {
-			fmt.Println(err)
+			log.Println(err)
 			continue
 		}
 
@@ -79,7 +79,7 @@ func (t *Tracker) Run() {
 					compiled = true
 				}
 
-				fmt.Println("[*] Changes found in ", path)
+				log.Println("[*] Changes found in ", path)
 
 				if ExecuteJavaCompile(path) == false {
 					issueCount += 1
@@ -91,7 +91,7 @@ func (t *Tracker) Run() {
 		}
 
 		if compiled {
-			fmt.Println("[*] Total issue found ", issueCount)
+			log.Println("[*] Total issue found ", issueCount)
 			issueCount = 0
 			compiled = false
 		}
