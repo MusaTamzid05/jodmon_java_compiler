@@ -8,8 +8,25 @@ import (
 )
 
 type Tracker struct {
-	root  string
-	paths []string
+	root           string
+	paths          []string
+	latestPaths    []string
+	lastHashedData map[string][]byte
+	compiled       bool
+	issueCount     int
+}
+
+func MakeTracker(path string) (Tracker, error) {
+
+	tracker := Tracker{root: path}
+	err := tracker.initListFiles(path)
+
+	if err != nil {
+		return tracker, err
+	}
+
+	return tracker, err
+
 }
 
 func (t *Tracker) initListFiles(path string) error {
@@ -50,70 +67,75 @@ func (t *Tracker) loadHash() map[string][]byte {
 }
 
 func (t *Tracker) Run() {
-	lastHashedData := t.loadHash()
-	var compiled bool
-	issueCount := 0
+	t.lastHashedData = t.loadHash()
+	t.compiled = false
+	t.issueCount = 0
+	var err error
 
 	for {
 		time.Sleep(1 * time.Second)
 		currentHashData := t.loadHash()
-		compiled = false
+		t.compiled = false
 
 		for path, hashData := range currentHashData {
-			if HashSame(lastHashedData[path], hashData) == false {
+			if HashSame(t.lastHashedData[path], hashData) == false {
 
-				if compiled == false {
-					compiled = true
+				if t.compiled == false {
+					t.compiled = true
 				}
 
 				log.Println("[*] Changes found in ", path)
 
 				if ExecuteJavaCompile(path) == false {
-					issueCount += 1
+					t.issueCount += 1
 				}
 
-				lastHashedData[path] = hashData
+				t.lastHashedData[path] = hashData
 			}
 
 		}
 
-		newPaths, err := t.getNewFilePaths()
+		t.latestPaths, err = t.getNewFilePaths()
 
 		if err != nil {
 			log.Fatalln(err)
-
 		}
 
 		// handle new files
+		t.handleNewFiles()
 
-		if len(newPaths) > 0 {
-			if compiled == false {
-				compiled = true
-			}
-
-			for _, path := range newPaths {
-
-				log.Println("[*] New file found in ", path)
-
-				if ExecuteJavaCompile(path) == false {
-					issueCount += 1
-				} else {
-					log.Println("[*] Adding ", path)
-					t.paths = append(t.paths, path)
-				}
-
-			}
-
-			lastHashedData = t.loadHash()
-		}
-
-		if compiled {
-			log.Println("[*] Total issue found ", issueCount)
-			issueCount = 0
-			compiled = false
+		if t.compiled {
+			log.Println("[*] Total issue found ", t.issueCount)
+			t.issueCount = 0
+			t.compiled = false
 		}
 
 	}
+}
+
+func (t *Tracker) handleNewFiles() {
+
+	if len(t.latestPaths) > 0 {
+		if t.compiled == false {
+			t.compiled = true
+		}
+
+		for _, path := range t.latestPaths {
+
+			log.Println("[*] New file found in ", path)
+
+			if ExecuteJavaCompile(path) == false {
+				t.issueCount += 1
+			} else {
+				log.Println("[*] Adding ", path)
+				t.paths = append(t.paths, path)
+			}
+
+		}
+
+		t.lastHashedData = t.loadHash()
+	}
+
 }
 
 func (t *Tracker) getNewFilePaths() ([]string, error) {
@@ -145,18 +167,5 @@ func (t *Tracker) getNewFilePaths() ([]string, error) {
 	}
 
 	return newPaths, nil
-
-}
-
-func MakeTracker(path string) (Tracker, error) {
-
-	tracker := Tracker{root: path}
-	err := tracker.initListFiles(path)
-
-	if err != nil {
-		return tracker, err
-	}
-
-	return tracker, err
 
 }
