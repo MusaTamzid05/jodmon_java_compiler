@@ -64,18 +64,36 @@ func (t *Tracker) loadHash() map[string][]byte {
 
 func (t *Tracker) Run() {
 	lastHashedData := t.loadHash()
+	var compiled bool
+	issueCount := 0
 
 	for {
 		time.Sleep(1 * time.Second)
 		currentHashData := t.loadHash()
+		compiled = false
 
 		for path, hashData := range currentHashData {
 			if HashSame(lastHashedData[path], hashData) == false {
+
+				if compiled == false {
+					compiled = true
+				}
+
 				fmt.Println("[*] Changes found in ", path)
-				ExecuteJavaCompile(path)
+
+				if ExecuteJavaCompile(path) == false {
+					issueCount += 1
+				}
+
 				lastHashedData[path] = hashData
 			}
 
+		}
+
+		if compiled {
+			fmt.Println("[*] Total issue found ", issueCount)
+			issueCount = 0
+			compiled = false
 		}
 
 	}

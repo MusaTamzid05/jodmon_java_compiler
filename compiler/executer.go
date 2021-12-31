@@ -6,7 +6,7 @@ import (
 	"os/exec"
 )
 
-func ExecuteJavaCompile(path string) {
+func ExecuteJavaCompile(path string) bool {
 	cmd := exec.Command("/usr/lib64/openjdk-8/bin/javac", path)
 
 	var out bytes.Buffer
@@ -19,5 +19,8 @@ func ExecuteJavaCompile(path string) {
 
 	if err != nil {
 		fmt.Println(fmt.Sprint(err) + " : " + stderr.String())
+		return false
 	}
+
+	return true
 }
